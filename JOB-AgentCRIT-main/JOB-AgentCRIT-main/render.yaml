@@ -1,0 +1,49 @@
+# ─── Render Blueprint — JOB-AgentCRIT ────────────────────────────────────────
+# Deploy this project to Render:
+#   1. Push this repo to GitHub
+#   2. Go to https://dashboard.render.com/blueprints
+#   3. Connect your repo and select this render.yaml
+#   4. Set secret env vars (GOOGLE_API_KEY, SERPER_API_KEY, SECRET_KEY)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── Main Backend (FastAPI + LangGraph + Gemini) ──────────────────────────
+  - type: web
+    name: jobagent-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    plan: free                   # upgrade to starter/standard for production
+    region: oregon               # us-west-2 — change to your preferred region
+    healthCheckPath: /api/health
+    autoDeploy: true             # auto-deploy on every push to main
+
+    envVars:
+      # ── Database ──────────────────────────────────────────────────────────
+      # SQLite works on Render free tier (ephemeral disk).
+      # For persistent data, add a Render PostgreSQL below and use its URL.
+      - key: DATABASE_URL
+        value: sqlite:///./job_bot.db
+
+      # ── AI Keys ───────────────────────────────────────────────────────────
+      # Set these in the Render Dashboard → Environment tab (never commit!)
+      - key: GOOGLE_API_KEY
+        sync: false              # prompts you to enter value in dashboard
+
+      - key: SERPER_API_KEY
+        sync: false
+
+      # ── Security ──────────────────────────────────────────────────────────
+      - key: SECRET_KEY
+        generateValue: true      # Render auto-generates a secure random value
+
+      # ── CORS ──────────────────────────────────────────────────────────────
+      # After deploying the frontend, update this with the real frontend URL.
+      # Multiple origins = comma-separated string (parsed in main.py already).
+      - key: ALLOWED_ORIGINS
+        value: "*"               # change to "https://your-frontend.vercel.app" etc.
+
+      # ── Python ────────────────────────────────────────────────────────────
+      - key: PYTHON_VERSION
+        value: "3.11.0"
